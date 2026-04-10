@@ -1,4 +1,9 @@
 export interface PluginConfig {
+  // Orchestrator identity — distinguishes Jimmy from future siblings (Forge, Megaphone)
+  orchestratorName: string;
+  environment: string;
+  gitSha?: string;
+
   langsmithApiKey: string | undefined;
   langsmithEndpoint: string;
   projectName: string;
