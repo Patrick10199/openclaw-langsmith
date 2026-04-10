@@ -183,6 +183,8 @@ export class Tracer {
   private activeToolRuns = new Map<string, ActiveRun>();
   // Track model usage per session (aggregated from llm_end events during a turn)
   private sessionModels = new Map<string, ModelInfo[]>();
+  // Track tool names used per session (cleared at endAgentRun)
+  private sessionToolsUsed = new Map<string, Set<string>>();
 
   constructor(
     private readonly client: LangSmithClient,
@@ -267,6 +269,11 @@ export class Tracer {
       // Clear session models for next turn
       this.sessionModels.delete(sessionKey);
 
+      // Gather tools used during this session + compute derived tags
+      const toolsUsed = Array.from(this.sessionToolsUsed.get(sessionKey) ?? []).sort();
+      this.sessionToolsUsed.delete(sessionKey);
+      const domains = computeDomain(new Set(toolsUsed));
+
       // Normalize token usage - OpenClaw might use different field names
       const promptTokens = usage?.prompt_tokens ?? usage?.input_tokens ?? 0;
       const completionTokens = usage?.completion_tokens ?? usage?.output_tokens ?? 0;
@@ -321,9 +328,15 @@ export class Tracer {
             },
           }),
         },
-        // Add tags for model/provider for easy filtering in LangSmith
+        // New enriched tag schema - tier 1 fields for queryable metadata
         tags: [
           ...(modelInfo ? [`provider:${modelInfo.provider}`, `model:${modelInfo.model}`] : []),
+          `orchestrator:${this.config.orchestratorName}`,
+          `environment:${this.config.environment}`,
+          `success:${success}`,
+          ...toolsUsed.map((n: string) => `tool:${n}`),
+          ...domains.map((d: string) => `domain:${d}`),
+          ...(this.config.gitSha ? [`git:${this.config.gitSha}`] : []),
         ],
       };
 
@@ -352,6 +365,10 @@ export class Tracer {
       const dottedOrder = makeDottedOrder(runId, parentRun?.dottedOrder);
 
       this.activeToolRuns.set(runId, { runId, traceId, dottedOrder, parentRunId, startTime });
+      // Track tool usage for this session
+      const sessionTools = this.sessionToolsUsed.get(sessionKey) ?? new Set<string>();
+      sessionTools.add(toolName);
+      this.sessionToolsUsed.set(sessionKey, sessionTools);
 
       const run: LangSmithRun = {
         id: runId,
