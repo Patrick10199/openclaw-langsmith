@@ -10,6 +10,9 @@ export function parseConfig(raw: Record<string, unknown> | undefined): PluginCon
   const apiKey = resolveEnvVars(r.langsmithApiKey as string | undefined) || process.env.LANGSMITH_API_KEY;
 
   return {
+    orchestratorName: (r.orchestratorName as string) || process.env.ORCHESTRATOR_NAME || "jimmy",
+    environment: (r.environment as string) || process.env.ENVIRONMENT || "prod",
+    gitSha: (r.gitSha as string) || process.env.GIT_SHA || undefined,
     langsmithApiKey: apiKey || undefined,
     langsmithEndpoint: (r.langsmithEndpoint as string) || "https://api.smith.langchain.com",
     projectName: (r.projectName as string) || "openclaw",
