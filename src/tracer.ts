@@ -12,6 +12,75 @@ interface ActiveRun {
 }
 
 /**
+ * Infer business domain(s) from a set of tool names.
+ * Returns an array of distinct domains touched by the tools used.
+ * Used for tag-based filtering in LangSmith (e.g. "show me all Odoo runs").
+ */
+function computeDomain(tools: Set<string>): string[] {
+  const domains = new Set<string>();
+  for (const t of tools) {
+    const lower = t.toLowerCase();
+    if (lower.includes("graph_") || lower.includes("mail") || lower.includes("calendar") || lower.includes("contact") || lower.includes("drive") || lower.includes("onedrive")) {
+      domains.add("m365");
+    }
+    if (lower.includes("odoo")) {
+      domains.add("odoo");
+    }
+    if (lower.includes("memory") || lower.includes("engram")) {
+      domains.add("memory");
+    }
+    if (lower === "exec" || lower === "read" || lower === "write" || lower === "edit" || lower.includes("filesystem")) {
+      domains.add("filesystem");
+    }
+    if (lower.includes("github") || lower.includes("git_") || lower.includes("gh_")) {
+      domains.add("github");
+    }
+    if (lower.includes("telegram") || lower.includes("slack") || lower.includes("discord") || lower.includes("mattermost")) {
+      domains.add("messaging");
+    }
+    if (lower.includes("web_search") || lower.includes("fetch") || lower.includes("browse")) {
+      domains.add("web");
+    }
+  }
+  return Array.from(domains).sort();
+}
+
+/**
+ * Compute USD cost for a model invocation given its token usage.
+ * Pricing in USD per million tokens: [input, output, cacheRead, cacheWrite].
+ * Returns 0 for unknown models so missing pricing never breaks tracing.
+ */
+function computeCost(
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+  cacheReadTokens: number,
+  cacheWriteTokens: number,
+): number {
+  const pricing: Array<[string, [number, number, number, number]]> = [
+    ["claude-opus-4-6",   [15.0, 75.0, 1.50, 18.75]],
+    ["claude-opus-4",     [15.0, 75.0, 1.50, 18.75]],
+    ["claude-sonnet-4-6", [3.0, 15.0, 0.30, 3.75]],
+    ["claude-sonnet-4",   [3.0, 15.0, 0.30, 3.75]],
+    ["claude-haiku-4-5",  [0.80, 4.0, 0.08, 1.00]],
+    ["claude-haiku-4",    [0.80, 4.0, 0.08, 1.00]],
+  ];
+  const key = model.toLowerCase();
+  let rates: [number, number, number, number] | undefined;
+  for (const [pattern, p] of pricing) {
+    if (key.includes(pattern)) { rates = p; break; }
+  }
+  if (!rates) return 0;
+  const [inP, outP, crP, cwP] = rates;
+  const cost =
+    (inputTokens * inP / 1000000) +
+    (outputTokens * outP / 1000000) +
+    (cacheReadTokens * crP / 1000000) +
+    (cacheWriteTokens * cwP / 1000000);
+  return Math.round(cost * 1000000) / 1000000;
+}
+
+/**
  * Parse model info from event data
  *
  * Priority:
