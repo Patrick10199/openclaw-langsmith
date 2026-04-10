@@ -80,23 +80,8 @@ function computeCost(
   return Math.round(cost * 1000000) / 1000000;
 }
 
-import crypto from "node:crypto";
-
-/**
- * Map an arbitrary session key (e.g. "agent:main:telegram:direct:8531758858")
- * to a deterministic UUID. LangSmith requires session_id to be a UUID,
- * not a free-form string. The same sessionKey always produces the same UUID
- * so conversations group correctly across process restarts.
- */
-function sessionKeyToUuid(sessionKey: string): string {
-  const h = crypto.createHash("sha1").update(sessionKey).digest("hex");
-  // Format first 32 hex chars as canonical UUID (8-4-4-4-12)
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20, 32)}`;
-}
-
 /**
  * Parse model info from event data
- *
  *
  * Priority:
  * 1. If provider is explicitly provided in the event, use it directly
@@ -257,7 +242,7 @@ export class Tracer {
         inputs: { prompt },
         start_time: startTime,
         session_name: this.config.projectName,
-        session_id: sessionKeyToUuid(sessionKey),
+        session_id: sessionKey,
         tags: tags.length > 0 ? tags : undefined,
         extra: { metadata: { sessionKey } },
       };
@@ -396,7 +381,7 @@ export class Tracer {
         parent_run_id: parentRunId,
         start_time: startTime,
         session_name: this.config.projectName,
-        session_id: sessionKeyToUuid(sessionKey),
+        session_id: sessionKey,
       };
 
       this.client.createRun(run);
