@@ -29,7 +29,6 @@ export interface LangSmithRun {
   error?: string;
   extra?: Record<string, unknown>;
   session_name: string;
-  session_id?: string;
   // Token usage fields (may only work for llm run types)
   prompt_tokens?: number;
   completion_tokens?: number;

@@ -242,7 +242,6 @@ export class Tracer {
         inputs: { prompt },
         start_time: startTime,
         session_name: this.config.projectName,
-        session_id: sessionKey,
         tags: tags.length > 0 ? tags : undefined,
         extra: { metadata: { sessionKey } },
       };
@@ -381,7 +380,6 @@ export class Tracer {
         parent_run_id: parentRunId,
         start_time: startTime,
         session_name: this.config.projectName,
-        session_id: sessionKey,
       };
 
       this.client.createRun(run);
