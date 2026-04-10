@@ -29,3 +29,11 @@ npm-debug.log*
 
 # Test coverage
 coverage/
+
+# Shell redirect typo safety
+/0
+/1
+/2
+/&1
+*.tmp.out
+*.scratch
